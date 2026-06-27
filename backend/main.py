@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import announce, intake, match, ops
+from routers import announce, intake, match, nav, ops
 
 app = FastAPI(
     title="SETU — Missing-Persons Reunification (Kumbh Mela 2027)",
@@ -29,6 +29,7 @@ app.add_middleware(
 app.include_router(intake.router, tags=["intake"])
 app.include_router(match.router, tags=["match"])
 app.include_router(announce.router, tags=["announce"])
+app.include_router(nav.router, tags=["nav"])
 app.include_router(ops.router, prefix="/ops", tags=["ops"])
 
 

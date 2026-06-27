@@ -21,9 +21,10 @@ WORKDIR /app/backend
 COPY backend/pyproject.toml ./
 RUN uv sync --no-dev
 
-# App + seed script.
+# App + seed script + datasets (geo.py reads data/ at runtime).
 COPY backend/ ./
 COPY scripts/ /app/scripts/
+COPY data/ /app/data/
 
 EXPOSE 8000
 CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
