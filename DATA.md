@@ -69,6 +69,6 @@ Parse KML with any XML lib (namespace `http://www.opengis.net/kml/2.2`): a place
 ## Next steps (recommended order)
 
 1. `scripts/load_dataset.py` — ingest the 2,500 records into the registry (replaces the toy seed). Maps cleanly to `Person` (centre_id ← reporting_center; is_minor ← age_band 0-12/13-17; no face_embedding).
-2. `scripts/eval_dedup.py` — run the matcher over the set, compare against `is_duplicate_report`, print precision/recall. **The killer demo metric.**
+2. `scripts/eval_dedup.py` — **DONE.** Finding: `is_duplicate_report` is **not attribute-recoverable** (tiny name pool → exact cross-center name twins for ~68% of duplicates *and* ~66% of non-duplicates; precision pins to the 8% base rate). So we benchmark on **injected duplicate twins** (same person, realistic noise) instead → **recall@1 ≈ 99.7%**, true-vs-imposter score separation ≈ +0.40. Engine lives in `backend/services/dedup.py`.
 3. Switch geography to Nashik: real coords for centers + a `last_seen_location → lat/lng` table; feed `geo_proximity`.
 4. Ops map: load CCTV / zones / police / chokepoints layers; hotspot heat from chokepoints + case density.
