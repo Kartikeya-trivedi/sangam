@@ -119,6 +119,7 @@ class ReportResponse(BaseModel):
     structured: Person
     candidates: list[MatchResult] = Field(default_factory=list)
     face_detected: bool = False
+    photo_analyzed: bool = False  # Claude Vision extracted attributes from the photo (cross-modal)
     offline_mode: bool = False
 
 

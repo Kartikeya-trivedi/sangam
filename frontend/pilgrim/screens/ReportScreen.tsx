@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 
-import { reportLost } from "../api";
+import { reportLost, type MatchResult } from "../api";
 import type { Draft } from "../App";
 import { ENREPORT, opt, report, t } from "../i18n";
 import { AGE_BANDS, GENDERS, LOCATIONS, type GenderValue } from "../options";
 import { ChipGroup } from "../components/ChipGroup";
+import { MatchResults } from "../components/MatchResults";
 import { SpeakHint } from "../components/SpeakHint";
 import { useRecorder } from "../hooks/useRecorder";
 
@@ -40,6 +41,7 @@ export function ReportScreen({ draft, onRestart }: { draft: Draft; onRestart: ()
 
   const [status, setStatus] = useState<Status>("idle");
   const [caseId, setCaseId] = useState("");
+  const [candidates, setCandidates] = useState<MatchResult[]>([]);
   const photoRef = useRef<HTMLInputElement>(null);
 
   // The only hard requirement: a callback number + at least one descriptor.
@@ -71,11 +73,13 @@ export function ReportScreen({ draft, onRestart }: { draft: Draft; onRestart: ()
         photo,
         text: name.trim() || undefined,
         language_hint: draft.language,
-        gender,
+        reporter_mobile: mobile,
+        gender: gender?.toLowerCase(), // backend Gender enum is lowercase (male/female/unknown)
         age_band: ageBand,
         last_seen_location: lastSeen,
       });
       setCaseId(res.report_id || genCaseId());
+      setCandidates(Array.isArray(res.candidates) ? res.candidates : []);
       setStatus("success");
     } catch {
       setStatus("error");
@@ -94,14 +98,25 @@ export function ReportScreen({ draft, onRestart }: { draft: Draft; onRestart: ()
   }
 
   if (status === "success") {
+    const hasMatches = candidates.length > 0;
+    // §2.2 voice-first: read the result count + the top candidate's reason aloud.
+    const spokenResult = hasMatches
+      ? `${r.matchesCount(candidates.length)}. ${candidates[0].explanation}`
+      : r.noMatchesSub;
+
     return (
       <div className="screen state-screen state-screen--success">
+        <SpeakHint text={spokenResult} lang={draft.language} listenLabel={s.listenAgain} />
         <div className="state__badge state__badge--ok">✓</div>
         <h1 className="state__title">{r.successTitle}</h1>
         <div className="case-id">
           <span>{r.caseId}</span>
           <strong>{caseId}</strong>
         </div>
+
+        {hasMatches && <h2 className="results__title">{r.matchesTitle}</h2>}
+        <MatchResults candidates={candidates} lang={draft.language} />
+
         <div className="next-steps">
           <p className="next-steps__h">{r.whatNow}</p>
           <ul>

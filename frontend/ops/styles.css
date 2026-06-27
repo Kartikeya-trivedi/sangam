@@ -184,3 +184,406 @@ body {
   color: #b3261e;
   font-weight: 600;
 }
+
+/* --- KPI header (GET /ops/stats + cases summary) ------------------------------------------ */
+.kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kpi {
+  flex: 1 1 110px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kpi__num {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.kpi__label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.kpi--good .kpi__num { color: #16a34a; }
+.kpi--minor .kpi__num { color: var(--minor); }
+.kpi--alert { border-color: #ef4444; }
+.kpi--alert .kpi__num { color: #dc2626; }
+
+/* --- clickable rows ----------------------------------------------------------------------- */
+.queue tr.clickable {
+  cursor: pointer;
+}
+
+.queue tbody tr.clickable:hover {
+  background: #f1f6f3;
+}
+
+.queue tbody tr.minor.clickable:hover {
+  background: #f5e6f7;
+}
+
+.queue tbody tr.clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.matchcount {
+  font-weight: 600;
+}
+
+.matchcount em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 400;
+}
+
+/* --- match review drawer ------------------------------------------------------------------ */
+.drawer__scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  z-index: 40;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(460px, 100vw);
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  box-shadow: -6px 0 24px rgba(0, 0, 0, 0.18);
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  animation: drawer-in 0.18s ease-out;
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(20px); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer__head h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  color: var(--accent);
+}
+
+.drawer__case {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.drawer__id {
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  margin: 0 4px;
+}
+
+.drawer__close {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.drawer__close:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.drawer__body {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 18px 28px;
+}
+
+.drawer__msg {
+  color: var(--muted);
+  padding: 12px 0;
+}
+
+.drawer__toast {
+  margin: 10px 18px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.drawer__toast--ok {
+  background: #e7f6ed;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.drawer__toast--err {
+  background: #fdeceb;
+  color: #b3261e;
+  border: 1px solid #f5b5b0;
+}
+
+.link {
+  border: none;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+/* --- candidate cards ---------------------------------------------------------------------- */
+.cand {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: #fbfdfc;
+}
+
+.cand__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.cand__score {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.cand__summary {
+  margin: 4px 0;
+  font-weight: 600;
+}
+
+.cand__explain {
+  margin: 2px 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.pill {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.pill--high { background: #dcfce7; color: #166534; }
+.pill--medium { background: #fef3c7; color: #92400e; }
+.pill--low { background: #fee2e2; color: #991b1b; }
+
+.tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.tag--lost { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.tag--found { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.tag--minor { background: #faf0fb; color: var(--minor); border-color: #e9c7ee; }
+
+/* score breakdown bars */
+.cand__breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-bottom: 12px;
+}
+
+.bd {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 64px;
+  flex: 1 1 64px;
+}
+
+.bd__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.bd__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #e7edf2;
+  overflow: hidden;
+}
+
+.bd__fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.bd__fill--hi { background: #16a34a; }
+.bd__fill--mid { background: #f59e0b; }
+.bd__fill--lo { background: #ef4444; }
+
+.cand__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.btn--confirm {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn--confirm:hover:not(:disabled) {
+  background: #096b41;
+}
+
+.btn--reject {
+  color: #b3261e;
+  border-color: #f5b5b0;
+}
+
+.btn--reject:hover:not(:disabled) {
+  background: #fdeceb;
+}
+
+.btn:focus-visible,
+.drawer__close:focus-visible {
+  outline: 3px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Sahayak — agentic dispatcher --------------------------------------------------------- */
+.sahayak { display: flex; gap: 16px; height: 100%; min-height: 560px; }
+
+.sahayak__list { flex: 0 0 240px; display: flex; flex-direction: column; gap: 8px; overflow: auto; }
+.sahayak__listhead {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted); padding: 2px 4px 6px;
+}
+.sacase {
+  text-align: left; border: 1px solid var(--border); background: var(--panel);
+  border-radius: 10px; padding: 10px 12px; cursor: pointer;
+}
+.sacase:hover { border-color: var(--accent); }
+.sacase--on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(10, 125, 75, 0.18); }
+.sacase__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.sacase__id { font-family: ui-monospace, "Cascadia Code", monospace; font-size: 12px; color: var(--muted); }
+.sacase__score { font-size: 12px; font-weight: 700; color: var(--accent); }
+.sacase__sum { font-size: 13px; }
+
+.sahayak__stage { flex: 1; min-width: 0; }
+.sahayak__empty { color: var(--muted); padding: 24px; }
+
+.sarun { display: flex; gap: 16px; height: 100%; }
+.sarun__timeline { flex: 1 1 460px; min-width: 0; overflow: auto; padding-right: 4px; }
+.sarun__case { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.sarun__case strong { font-family: ui-monospace, monospace; color: var(--ink); }
+.sarun__map { flex: 1 1 46%; min-width: 280px; }
+.sarun__mapcanvas {
+  width: 100%; height: 100%; min-height: 460px; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.sastep { display: flex; gap: 12px; position: relative; padding-bottom: 16px; }
+.sastep::before {
+  content: ""; position: absolute; left: 17px; top: 34px; bottom: 0; width: 2px; background: var(--border);
+}
+.sastep:last-child::before { display: none; }
+.sastep__icon {
+  flex: 0 0 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: #eef5f1; border: 1px solid var(--border); font-size: 16px; z-index: 1;
+}
+.sastep--verdict .sastep__icon { background: #dcfce7; border-color: #86efac; }
+.sastep--dispatch .sastep__icon { background: #e0edff; border-color: #bfdbfe; }
+.sastep--predict .sastep__icon { background: #fff1e0; border-color: #fed7aa; }
+.sastep__body { flex: 1; min-width: 0; animation: sa-in 0.25s ease-out; }
+@keyframes sa-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.sastep__title { font-weight: 700; font-size: 15px; }
+.sastep__detail { font-size: 13px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+
+.samatch { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 6px; }
+.sapill { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+.sapill--high { background: #dcfce7; color: #166534; }
+.sapill--medium { background: #fef3c7; color: #92400e; }
+.sapill--low { background: #fee2e2; color: #991b1b; }
+
+.sazone {
+  font-size: 13px; margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: #fbfdfc;
+  border-left: 3px solid var(--muted);
+}
+.sazone--high { border-left-color: #dc2626; }
+.sazone--medium { border-left-color: #f97316; }
+.sazone--low { border-left-color: #eab308; }
+
+.sadispatch {
+  margin-top: 8px; border: 1px solid #bfdbfe; background: #f3f8ff; border-radius: 10px; padding: 10px 12px;
+}
+.sadispatch--blocked { border-color: #e9c7ee; background: #faf0fb; }
+.sadispatch__text { font-size: 14px; line-height: 1.55; }
+.sadispatch__meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.satag {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: #fff;
+  border: 1px solid var(--border); color: var(--muted);
+}
+.saaudio { margin-top: 10px; width: 100%; height: 36px; }
+.saverdict { margin-top: 8px; font-weight: 700; color: var(--accent); }
+
+.sastep--pending .sastep__icon { background: #fff; }
+.saspin {
+  width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: sa-spin 0.7s linear infinite;
+}
+@keyframes sa-spin { to { transform: rotate(360deg); } }

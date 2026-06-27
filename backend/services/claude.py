@@ -17,6 +17,7 @@ temperature/top_p, structured outputs via output_config.format.
 """
 from __future__ import annotations
 
+import base64
 import json
 import re
 import uuid
@@ -117,8 +118,7 @@ def _extract_fields(transcript: str) -> dict:
             model=settings.anthropic_model,
             max_tokens=1024,
             system=EXTRACTION_SYSTEM,
-            output_config={"effort": "low",
-                           "format": {"type": "json_schema", "schema": _EXTRACTION_SCHEMA}},
+            output_config={"format": {"type": "json_schema", "schema": _EXTRACTION_SCHEMA}},
             messages=[{"role": "user", "content": transcript}],
         )
         text = next((b.text for b in msg.content if getattr(b, "type", None) == "text"), "")
@@ -126,6 +126,56 @@ def _extract_fields(transcript: str) -> dict:
     except Exception:
         # Any API/SDK error -> degrade to the rule-based path for this one request.
         return _mock_extract(transcript)
+
+
+# --- vision: photo -> canonical attributes (the CROSS-MODAL bridge) -----------------------
+# The provided dataset has no photos, so face-vs-face recognition can't match a family's photo
+# against text-logged records. Claude Vision instead converts the photo into the SAME canonical
+# attribute vocabulary the text records use, so a photo can match an attribute-described person.
+VISION_SYSTEM = """You are a VISION data-extraction service for a missing-persons reunification \
+system at the Nashik-Trimbakeshwar Kumbh Mela. You receive a PHOTO of the missing person provided \
+by their family. Extract ONLY canonical, English-normalized attributes you can VISUALLY verify.
+
+Rules:
+- Never fabricate. If something is not visible, use null (strings), [] (lists), or "unknown".
+- Do NOT guess the person's name or spoken languages from a photo -> name=null, languages_spoken=[].
+- age_band: estimate from appearance -> one of "0-12","13-17","18-40","41-60","61-70","71-80","80+", \
+else "unknown".
+- gender: "male"/"female" only if visually clear, else "unknown".
+- clothing: colour + garment you can see, e.g. ["blue kurta","white dhoti","red saree"].
+- distinguishing_features: visible items/marks -> ["walking stick","spectacles","cap","beard","red bindi"].
+- height_band: "short"/"medium"/"tall" only if inferable, else "unknown".
+- last_seen_location: null (not knowable from a photo).
+- native_summary: ONE short factual English sentence describing the person, for staff."""
+
+
+def extract_image_attributes(image_path: str) -> dict:
+    """Photo -> canonical-English visual attributes. Returns {} when unavailable (no key / error).
+
+    Same schema as text extraction, so the result merges straight into the matching vocabulary.
+    """
+    client = _get_client()
+    if client is None or not image_path:
+        return {}
+    try:
+        with open(image_path, "rb") as f:
+            b64 = base64.standard_b64encode(f.read()).decode("ascii")
+        msg = client.messages.create(
+            model=settings.anthropic_model,
+            max_tokens=1024,
+            system=VISION_SYSTEM,
+            output_config={"format": {"type": "json_schema", "schema": _EXTRACTION_SCHEMA}},
+            messages=[{"role": "user", "content": [
+                {"type": "image",
+                 "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
+                {"type": "text", "text": "Extract this person's visible attributes as JSON."},
+            ]}],
+        )
+        text = next((b.text for b in msg.content if getattr(b, "type", None) == "text"), "")
+        return _parse_json(text) or {}
+    except Exception:
+        # Vision unavailable / API error -> no attributes (face embedding + text still run).
+        return {}
 
 
 # --- re-rank -----------------------------------------------------------------------------

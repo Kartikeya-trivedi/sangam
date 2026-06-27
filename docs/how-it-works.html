@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SETU · सेतु — How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #fbf1dd; --paper-2: #f4e6c6; --card: #fffaf0;
+        --ink: #2a1e12; --ink-soft: #715a40; --ink-faint: #a08862;
+        --saffron: #ec6c1e; --saffron-deep: #cf5316; --marigold: #f4a52a;
+        --vermillion: #c8341f; --gold: #c79a3f; --indigo: #2b2a63; --indigo-soft: #4b4a93;
+        --river: #0e7a5f; --line: rgba(42,30,18,0.16);
+        --display: "Baloo 2","Noto Sans",system-ui,sans-serif;
+        --body: "Noto Sans",system-ui,sans-serif;
+        --serif: "Noto Serif Devanagari","Baloo 2",serif;
+        --shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 14px 30px -16px rgba(120,60,12,.45);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font-family: var(--body); color: var(--ink); line-height: 1.6;
+        background-color: var(--paper);
+        background-image:
+          radial-gradient(120% 70% at 50% -8%, rgba(244,165,42,.42), transparent 60%),
+          radial-gradient(80% 60% at 108% 6%, rgba(236,108,30,.22), transparent 55%),
+          radial-gradient(80% 60% at -8% 28%, rgba(200,52,31,.12), transparent 55%),
+          linear-gradient(180deg, var(--paper), var(--paper-2));
+        background-attachment: fixed;
+      }
+      body::after {
+        content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+        opacity: .045; mix-blend-mode: multiply;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px 80px; }
+
+      /* torana festoon */
+      .festoon {
+        height: 18px;
+        background:
+          radial-gradient(circle at 14px 2px, var(--marigold) 5px, transparent 5.5px) 0 0/28px 18px repeat-x,
+          radial-gradient(circle at 0 2px, var(--vermillion) 3.5px, transparent 4px) 14px 0/28px 18px repeat-x;
+        opacity: .92;
+      }
+
+      /* hero */
+      .hero { text-align: center; padding: 54px 0 30px; }
+      .brand {
+        font-family: var(--display); font-weight: 800; font-size: clamp(46px, 11vw, 86px);
+        letter-spacing: -.02em; line-height: .95; margin: 0;
+        background: linear-gradient(135deg, var(--saffron), var(--vermillion));
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .brand .dev { font-family: var(--serif); display: block; font-size: .5em; color: var(--indigo);
+        -webkit-text-fill-color: var(--indigo); margin-top: 2px; }
+      .hero p { font-size: clamp(16px, 3.4vw, 21px); color: var(--ink-soft); max-width: 620px; margin: 16px auto 0; }
+      .pill {
+        display: inline-block; margin-top: 22px; padding: 8px 18px; border-radius: 999px;
+        font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--indigo);
+        background: rgba(43,42,99,.08); border: 1.5px solid rgba(43,42,99,.18);
+      }
+
+      h2.section {
+        font-family: var(--serif); font-weight: 700; font-size: clamp(26px, 5.5vw, 36px);
+        margin: 64px 0 6px; display: flex; align-items: center; gap: 12px;
+      }
+      h2.section::after { content: ""; flex: 1; height: 2px; background: linear-gradient(90deg, var(--gold), transparent); }
+      .section-sub { color: var(--ink-soft); margin: 0 0 26px; font-size: 16px; }
+
+      /* journey timeline */
+      .journey { display: grid; gap: 16px; }
+      .step {
+        position: relative; display: grid; grid-template-columns: 64px 1fr; gap: 18px;
+        background: var(--card); border: 1.5px solid var(--line); border-radius: 22px;
+        padding: 22px 24px; box-shadow: var(--shadow);
+      }
+      .step__num {
+        width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center;
+        font-family: var(--display); font-weight: 800; font-size: 26px; color: #fff8ee;
+        background: linear-gradient(135deg, var(--saffron), var(--vermillion));
+        box-shadow: 0 10px 22px -10px rgba(207,83,22,.8);
+      }
+      .step:nth-child(2) .step__num { background: linear-gradient(135deg, var(--marigold), var(--saffron)); }
+      .step:nth-child(3) .step__num { background: linear-gradient(135deg, var(--river), #0a5f49); }
+      .step:nth-child(4) .step__num { background: linear-gradient(135deg, var(--indigo-soft), var(--indigo)); }
+      .step:nth-child(5) .step__num { background: linear-gradient(135deg, var(--gold), var(--saffron-deep)); }
+      .step__icon { font-size: 24px; }
+      .step h3 { font-family: var(--display); font-weight: 700; font-size: 21px; margin: 2px 0 2px; }
+      .step h3 small { font-family: var(--serif); font-weight: 600; color: var(--saffron-deep); font-size: .72em; margin-left: 8px; }
+      .step p { margin: 4px 0 12px; color: var(--ink-soft); font-size: 15px; }
+      .tags { display: flex; flex-wrap: wrap; gap: 7px; }
+      .tag {
+        font-family: var(--display); font-weight: 600; font-size: 12.5px; padding: 4px 11px; border-radius: 999px;
+        background: var(--paper); border: 1.5px solid var(--line); color: var(--ink);
+      }
+      .tag--ai { background: rgba(43,42,99,.08); border-color: rgba(43,42,99,.2); color: var(--indigo); }
+
+      /* spotlight callouts */
+      .spot {
+        border-radius: 26px; padding: 28px 30px; color: #fff8ee; box-shadow: var(--shadow);
+        position: relative; overflow: hidden;
+      }
+      .spot::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 80% at 90% -20%, rgba(255,255,255,.22), transparent 55%); }
+      .spot--vlm { background: linear-gradient(135deg, var(--saffron), var(--vermillion)); }
+      .spot--sahayak { background: linear-gradient(135deg, var(--indigo-soft), var(--indigo)); }
+      .spot h3 { font-family: var(--display); font-weight: 800; font-size: 24px; margin: 0 0 8px; position: relative; }
+      .spot p { margin: 0; font-size: 16px; opacity: .95; position: relative; max-width: 760px; }
+      .flowline { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; position: relative; }
+      .flowline span {
+        font-family: var(--display); font-weight: 700; font-size: 13px; padding: 6px 12px; border-radius: 10px;
+        background: rgba(255,255,255,.16); border: 1.5px solid rgba(255,255,255,.28);
+      }
+      .flowline b { opacity: .7; align-self: center; }
+
+      /* architecture */
+      .arch { display: grid; gap: 14px; }
+      .arch__row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+      .node {
+        flex: 1 1 200px; min-width: 160px; background: var(--card); border: 1.5px solid var(--line);
+        border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow); text-align: center;
+      }
+      .node--front { border-color: rgba(236,108,30,.5); }
+      .node--api { background: linear-gradient(135deg, #fff3e2, var(--card)); border-color: rgba(236,108,30,.5); flex-basis: 100%; }
+      .node h4 { font-family: var(--display); font-weight: 700; margin: 0 0 2px; font-size: 17px; }
+      .node small { color: var(--ink-soft); font-size: 13px; }
+      .arch__svc { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+      .svc {
+        font-family: var(--display); font-weight: 600; font-size: 13.5px; padding: 9px 15px; border-radius: 12px;
+        background: var(--card); border: 1.5px solid var(--line); display: flex; align-items: center; gap: 7px;
+      }
+      .arrow { text-align: center; color: var(--gold); font-size: 22px; line-height: 1; }
+
+      /* innovation grid */
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+      .ino { background: var(--card); border: 1.5px solid var(--line); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); }
+      .ino__i { font-size: 30px; }
+      .ino h4 { font-family: var(--display); font-weight: 700; margin: 8px 0 4px; font-size: 18px; }
+      .ino p { margin: 0; color: var(--ink-soft); font-size: 14px; }
+
+      footer { text-align: center; color: var(--ink-faint); font-size: 14px; margin-top: 64px; }
+      footer b { color: var(--saffron-deep); }
+
+      /* reveal on scroll */
+      .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.22,1,.36,1); }
+      .reveal.in { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="festoon"></div>
+    <div class="wrap">
+      <header class="hero">
+        <h1 class="brand">SETU<span class="dev">सेतु</span></h1>
+        <p>A bridge between the lost and their family at the <strong>Nashik–Trimbakeshwar Simhastha Kumbh Mela 2027</strong> — voice-first, in every Indian language, matching across every lost-and-found centre.</p>
+        <span class="pill">How the reunification engine works</span>
+      </header>
+
+      <h2 class="section reveal">The reunification journey</h2>
+      <p class="section-sub reveal">From a panicked report to a family reunited — usually in seconds.</p>
+      <div class="journey">
+        <div class="step reveal">
+          <div class="step__num">1</div>
+          <div>
+            <h3><span class="step__icon">🎙️</span> Report <small>रिपोर्ट दें</small></h3>
+            <p>A family describes the missing person — by <strong>voice in any of 9 languages</strong>, by tapping big icons (gender, age, last-seen place), or by snapping a <strong>photo</strong>. No login, huge buttons, the app talks back. Or a pilgrim taps <em>"I am lost"</em> and is guided to the nearest help desk.</p>
+            <div class="tags"><span class="tag">Pilgrim PWA</span><span class="tag">9 languages</span><span class="tag">voice · photo · taps</span></div>
+          </div>
+        </div>
+        <div class="step reveal">
+          <div class="step__num">2</div>
+          <div>
+            <h3><span class="step__icon">🧠</span> Understand <small>समझना</small></h3>
+            <p>Sarvam <strong>STT</strong> transcribes the speech in native script. <strong>Claude</strong> normalises the messy, code-mixed report into one canonical-English profile (age band, gender, clothing, language, landmark) — and <strong>Claude Vision</strong> reads the photo into the <em>same</em> vocabulary, so a picture can match a text record.</p>
+            <div class="tags"><span class="tag--ai tag">Sarvam Saarika</span><span class="tag--ai tag">Claude extraction</span><span class="tag--ai tag">Claude Vision (VLM)</span></div>
+          </div>
+        </div>
+        <div class="step reveal">
+          <div class="step__num">3</div>
+          <div>
+            <h3><span class="step__icon">🧩</span> Match <small>मिलान</small></h3>
+            <p>The engine scores the report against everyone logged "found" across <strong>every centre</strong> — face + attribute + geo, with a hard gender veto and weight redistribution for missing data. Claude re-ranks the top candidates and writes a one-line <strong>"why it matched"</strong> a volunteer can act on.</p>
+            <div class="tags"><span class="tag">face + attribute + geo</span><span class="tag">ranked top-K</span><span class="tag--ai tag">explained by Claude</span></div>
+          </div>
+        </div>
+        <div class="step reveal">
+          <div class="step__num">4</div>
+          <div>
+            <h3><span class="step__icon">🤖</span> Sahayak dispatches <small>सहायक</small></h3>
+            <p>An <strong>agentic dispatcher</strong> works the case like a control-room officer: it predicts where the person <em>drifted</em> using real Kumbh crowd geography (ghats, chokepoints), dispatches a localised loudspeaker announcement to the right help desks, and re-checks as new "found" reports arrive.</p>
+            <div class="tags"><span class="tag--ai tag">drift-zone prediction</span><span class="tag">crowd chokepoints</span><span class="tag--ai tag">auto announce</span></div>
+          </div>
+        </div>
+        <div class="step reveal">
+          <div class="step__num">5</div>
+          <div>
+            <h3><span class="step__icon">🪔</span> Reunite <small>पुनर्मिलन</small></h3>
+            <p>On a strong match the family is called and brought together. <strong>Children are never publicly announced</strong> — a minor triggers a private staff alert and guardian verification instead (child-safety §12). Every confirm and announce is audit-logged; no names or phones ever appear in logs.</p>
+            <div class="tags"><span class="tag">call family</span><span class="tag">child-safety gate</span><span class="tag">audit log</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="section reveal">The trick no one else has</h2>
+      <p class="section-sub reveal">Two ideas that make SETU more than a search box.</p>
+      <div class="grid" style="grid-template-columns: 1fr;">
+        <div class="spot spot--vlm reveal">
+          <h3>🖼️ Cross-modal matching — photo ↔ text</h3>
+          <p>The provided dataset has <strong>no photos</strong>, so face-recognition can't match a family's snapshot against text-only records. Claude Vision instead converts the photo into the <em>same canonical attributes</em> the records use — so a photo of grandpa matches a text-logged "elderly man, blue kurta, walking stick."</p>
+          <div class="flowline"><span>📷 photo</span><b>→</b><span>Claude Vision</span><b>→</b><span>elderly · male · blue kurta · stick</span><b>→</b><span>🧩 match</span></div>
+        </div>
+        <div class="spot spot--sahayak reveal">
+          <h3>🤖 Sahayak — the agentic reunification dispatcher</h3>
+          <p>It doesn't wait. For each open case it reasons step-by-step and you watch it live on the map.</p>
+          <div class="flowline"><span>① read</span><b>→</b><span>② scan every centre</span><b>→</b><span>③ predict drift zone</span><b>→</b><span>④ dispatch announcement</span><b>→</b><span>⑤ notify family</span></div>
+        </div>
+      </div>
+
+      <h2 class="section reveal">How it's built</h2>
+      <p class="section-sub reveal">A graceful-degradation monolith — boots and matches even with zero API keys.</p>
+      <div class="arch">
+        <div class="arch__row reveal">
+          <div class="node node--front"><h4>🧍 Pilgrim PWA</h4><small>Voice-first kiosk · React + Vite · Capacitor</small></div>
+          <div class="node node--front"><h4>🗺️ Ops dashboard</h4><small>Case queue · Google Map · Sahayak</small></div>
+        </div>
+        <div class="arrow reveal">▼</div>
+        <div class="node node--api reveal"><h4>⚙️ FastAPI backend</h4><small>intake · match · announce · ops · Sahayak — SQLite registry</small></div>
+        <div class="arrow reveal">▼</div>
+        <div class="arch__svc reveal">
+          <span class="svc">🧠 Claude — reasoning + vision</span>
+          <span class="svc">🗣️ Sarvam — STT + TTS</span>
+          <span class="svc">😶 InsightFace — face embeddings</span>
+          <span class="svc">🗃️ SQLite + FTS</span>
+          <span class="svc">🗺️ Google Maps</span>
+        </div>
+      </div>
+
+      <h2 class="section reveal">Why it wins</h2>
+      <div class="grid">
+        <div class="ino reveal"><div class="ino__i">🖼️</div><h4>Cross-modal VLM bridge</h4><p>Photos work against a photo-less dataset — Claude Vision is the translator.</p></div>
+        <div class="ino reveal"><div class="ino__i">🤖</div><h4>Agentic Sahayak</h4><p>Predicts drift, dispatches, and re-checks — visible Claude reasoning, live on the map.</p></div>
+        <div class="ino reveal"><div class="ino__i">🌐</div><h4>Truly multilingual</h4><p>9 Indian languages, end to end — UI, voice readback, and cross-language matching.</p></div>
+        <div class="ino reveal"><div class="ino__i">🛡️</div><h4>Child-safety first</h4><p>Minors are never publicly announced — private staff alert + guardian verification.</p></div>
+        <div class="ino reveal"><div class="ino__i">📴</div><h4>Offline-resilient</h4><p>Every external service degrades gracefully — the camp never goes fully down.</p></div>
+        <div class="ino reveal"><div class="ino__i">🔍</div><h4>Explainable matches</h4><p>Never a black-box yes/no — ranked candidates with a plain "why it matched".</p></div>
+      </div>
+
+      <footer>
+        Built for the <b>Claude Impact Lab</b> · Nashik–Trimbakeshwar Kumbh Mela 2027 ·
+        <b>SETU · सेतु</b> — a bridge between the lost and their family.
+      </footer>
+    </div>
+
+    <script>
+      const io = new IntersectionObserver(
+        (entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
+        { threshold: 0.12 },
+      );
+      document.querySelectorAll(".reveal").forEach((el, i) => {
+        el.style.transitionDelay = (i % 4) * 0.06 + "s";
+        io.observe(el);
+      });
+    </script>
+  </body>
+</html>

@@ -4,11 +4,13 @@ import type { ReportResponse } from "./api";
 import type { Lang } from "./i18n";
 import { LANGUAGES } from "./i18n";
 import { LanguageScreen } from "./screens/LanguageScreen";
+import { IntentScreen } from "./screens/IntentScreen";
+import { SelfLostScreen } from "./screens/SelfLostScreen";
 import { ReportScreen } from "./screens/ReportScreen";
 import type { GenderValue } from "./options";
 
-// Crisis-oriented flow: just two screens — Language → Report (single intake + states).
-export type Step = "language" | "report";
+// Flow: Language → Intent (someone lost / I am lost) → Report | Self-lost.
+export type Step = "language" | "intent" | "selflost" | "report";
 
 export interface Draft {
   language: Lang; // e.g. "hi-IN"
@@ -35,27 +37,30 @@ export default function App() {
 
   return (
     <div className="app">
-      {step !== "language" && (
-        <button className="lang-pill" onClick={() => setStep("language")}>
-          🌐 {currentLabel} <span className="lang-pill__change">⟳</span>
-        </button>
-      )}
-
       {step === "language" && (
         <LanguageScreen
           onNext={(d) => {
             merge(d);
-            setStep("report");
+            setStep("intent");
           }}
         />
       )}
+
+      {step === "intent" && (
+        <IntentScreen
+          lang={draft.language}
+          onChoose={(mode) => setStep(mode === "report" ? "report" : "selflost")}
+        />
+      )}
+
+      {step === "selflost" && <SelfLostScreen lang={draft.language} onBack={() => setStep("intent")} />}
 
       {step === "report" && (
         <ReportScreen
           draft={draft}
           onRestart={() => {
             setDraft({ ...FRESH, language: draft.language, languageLabel: currentLabel });
-            setStep("language");
+            setStep("intent");
           }}
         />
       )}

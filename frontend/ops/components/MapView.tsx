@@ -1,109 +1,148 @@
-import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 
-import { API_BASE, MAPS_API_KEY } from "../api";
+import { API_BASE, GOOGLE_MAPS_API_KEY } from "../api";
 
-// Nashik–Trimbakeshwar (lng, lat).
-const NASHIK: [number, number] = [73.7898, 19.9975];
+// Nashik–Trimbakeshwar — the real Simhastha Kumbh venue.
+const NASHIK = { lat: 19.9975, lng: 73.7898 };
+const EMPTY = { type: "FeatureCollection", features: [] as unknown[] };
 
-const EMPTY = { type: "FeatureCollection", features: [] } as const;
-
-// With a MapTiler/Mapbox key, use a real street basemap; else the free MapLibre demo tiles.
-function styleUrl(): string {
-  if (MAPS_API_KEY) return `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPS_API_KEY}`;
-  return "https://demotiles.maplibre.org/style.json";
+declare global {
+  interface Window {
+    google?: any;
+    __setuGmaps?: Promise<any>;
+  }
 }
 
-const KIND_LABEL: Record<string, string> = {
-  last_seen: "Last seen here",
-  in_care: "In our care",
-  reunited: "Reunited",
-};
+// Load the Google Maps JS API once (idempotent across mounts / StrictMode double-invoke).
+function loadGoogleMaps(key: string): Promise<any> {
+  if (window.google?.maps) return Promise.resolve(window.google);
+  if (window.__setuGmaps) return window.__setuGmaps;
+  window.__setuGmaps = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly`;
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve(window.google);
+    s.onerror = () => reject(new Error("google_maps_load_failed"));
+    document.head.appendChild(s);
+  });
+  return window.__setuGmaps;
+}
+
+function subset(fc: any, type: string): any[] {
+  return (fc?.features ?? []).filter((f: any) => f?.properties?.feature_type === type);
+}
+
+function dot(google: any, color: string, scale: number) {
+  return {
+    path: google.maps.SymbolPath.CIRCLE,
+    scale,
+    fillColor: color,
+    fillOpacity: 0.95,
+    strokeColor: "#ffffff",
+    strokeWeight: 2,
+  };
+}
 
 export function MapView() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!ref.current) return;
-    const map = new maplibregl.Map({ container: ref.current, style: styleUrl(), center: NASHIK, zoom: 12 });
+    if (!ref.current || !GOOGLE_MAPS_API_KEY) return;
+    let cancelled = false;
 
-    map.on("load", async () => {
-      const [cases, geo] = await Promise.all([
-        fetch(`${API_BASE}/ops/map`).then((r) => r.json()).catch(() => EMPTY),
-        fetch(`${API_BASE}/ops/geo`).then((r) => r.json()).catch(() => ({ hotspots: EMPTY, police: EMPTY })),
-      ]);
+    (async () => {
+      let google: any;
+      try {
+        google = await loadGoogleMaps(GOOGLE_MAPS_API_KEY);
+      } catch {
+        return; // map unavailable -> the legend + dashboard still render (graceful)
+      }
+      if (cancelled || !ref.current) return;
 
-      // Risk hotspots (soft red halos) — where separations cluster.
-      map.addSource("hotspots", { type: "geojson", data: geo.hotspots ?? EMPTY });
-      map.addLayer({
-        id: "hotspots",
-        type: "circle",
-        source: "hotspots",
-        paint: { "circle-radius": 28, "circle-color": "#ef4444", "circle-opacity": 0.15, "circle-stroke-color": "#ef4444", "circle-stroke-width": 1 },
+      const map = new google.maps.Map(ref.current, {
+        center: NASHIK,
+        zoom: 13,
+        mapTypeId: "roadmap",
+        streetViewControl: false,
+        mapTypeControl: true,
+        fullscreenControl: true,
+        clickableIcons: false,
+      });
+      const info = new google.maps.InfoWindow();
+
+      const fc = await fetch(`${API_BASE}/api/v1/ops/map`)
+        .then((r) => r.json())
+        .catch(() => EMPTY);
+      if (cancelled) return;
+
+      // Risk hotspots — chokepoints as translucent halos coloured by risk level.
+      subset(fc, "chokepoint").forEach((f) => {
+        const [lng, lat] = f.geometry.coordinates;
+        const risk = f.properties.risk_level;
+        const color = risk === "very-high" ? "#dc2626" : risk === "high" ? "#f97316" : "#eab308";
+        new google.maps.Circle({
+          map,
+          center: { lat, lng },
+          radius: risk === "very-high" ? 450 : 320,
+          fillColor: color,
+          fillOpacity: 0.16,
+          strokeColor: color,
+          strokeOpacity: 0.55,
+          strokeWeight: 1,
+        });
       });
 
       // Police stations.
-      map.addSource("police", { type: "geojson", data: geo.police ?? EMPTY });
-      map.addLayer({
-        id: "police",
-        type: "circle",
-        source: "police",
-        paint: { "circle-radius": 5, "circle-color": "#1d4ed8", "circle-stroke-color": "#fff", "circle-stroke-width": 1 },
+      subset(fc, "police_station").forEach((f) => {
+        const [lng, lat] = f.geometry.coordinates;
+        new google.maps.Marker({
+          map,
+          position: { lat, lng },
+          title: f.properties.station_name ?? "Police",
+          icon: dot(google, "#1d4ed8", 5),
+          zIndex: 2,
+        });
       });
 
-      // Cases — colored by kind; minors are a distinct redacted color (§12).
-      map.addSource("cases", { type: "geojson", data: cases });
-      map.addLayer({
-        id: "cases",
-        type: "circle",
-        source: "cases",
-        paint: {
-          "circle-radius": 8,
-          "circle-stroke-width": 2,
-          "circle-stroke-color": "#fff",
-          "circle-color": [
-            "case",
-            ["get", "is_minor"], "#7b1fa2",
-            ["==", ["get", "kind"], "reunited"], "#16a34a",
-            ["==", ["get", "kind"], "in_care"], "#0a7d4b",
-            ["==", ["get", "kind"], "last_seen"], "#ef4444",
-            "#64748b",
-          ],
-        },
+      // Case clusters per centre — size by open volume; red if anyone is still waiting, else green.
+      subset(fc, "case_cluster").forEach((f) => {
+        const [lng, lat] = f.geometry.coordinates;
+        const ol = Number(f.properties.open_lost ?? 0);
+        const of = Number(f.properties.open_found ?? 0);
+        const marker = new google.maps.Marker({
+          map,
+          position: { lat, lng },
+          title: f.properties.centre_id ?? "Centre",
+          icon: dot(google, ol > 0 ? "#ef4444" : "#0a7d4b", Math.min(20, 8 + (ol + of) * 0.6)),
+          zIndex: 3,
+        });
+        marker.addListener("click", () => {
+          info.setContent(
+            `<div style="font:600 13px system-ui;color:#0f172a">${f.properties.centre_id ?? "Centre"}</div>` +
+              `<div style="font:12px system-ui;color:#475569">${ol} waiting · ${of} in our care</div>`,
+          );
+          info.open({ map, anchor: marker });
+        });
       });
+    })();
 
-      map.on("click", "cases", (e) => {
-        const f = e.features?.[0];
-        if (!f) return;
-        const p = f.properties as Record<string, string>;
-        const coords = (f.geometry as { coordinates: [number, number] }).coordinates;
-        new maplibregl.Popup()
-          .setLngLat(coords)
-          .setHTML(
-            `<strong>${KIND_LABEL[p.kind] ?? p.kind}</strong><br/>${p.label}` +
-              `<br/><small>status: ${p.status}${p.centre_id ? ` · ${p.centre_id}` : ""}</small>`,
-          )
-          .addTo(map);
-      });
-      map.on("mouseenter", "cases", () => (map.getCanvas().style.cursor = "pointer"));
-      map.on("mouseleave", "cases", () => (map.getCanvas().style.cursor = ""));
-    });
-
-    return () => map.remove();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
     <div className="mapwrap">
       <div ref={ref} className="map" />
       <div className="legend">
-        <div><span className="dot last" /> Last seen (lost)</div>
-        <div><span className="dot care" /> In our care (found)</div>
-        <div><span className="dot reunited" /> Reunited</div>
-        <div><span className="dot minor" /> Protected (minor)</div>
+        <div><span className="dot last" /> Waiting families (open lost)</div>
+        <div><span className="dot care" /> In our care (open found)</div>
         <div><span className="dot police" /> Police</div>
         <div><span className="hot" /> Risk hotspot</div>
-        {!MAPS_API_KEY && <div className="nokey">Free basemap · set VITE_MAPS_API_KEY for streets</div>}
+        {!GOOGLE_MAPS_API_KEY && (
+          <div className="nokey">Set VITE_GOOGLE_MAPS_API_KEY in frontend/ops/.env for the live map</div>
+        )}
       </div>
     </div>
   );

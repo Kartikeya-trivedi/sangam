@@ -31,7 +31,8 @@ def _save_upload(upload: UploadFile | None, suffix: str) -> str | None:
 
 
 async def _handle(role: str, *, text, audio, photo, language_hint, centre_id,
-                  consent_given, reporter_mobile, reporter_name, top_k) -> JSONResponse:
+                  consent_given, reporter_mobile, reporter_name,
+                  gender, age_band, last_seen_location, top_k) -> JSONResponse:
     if not centre_id:
         return JSONResponse(status_code=400,
                             content={"error": "centre_required", "spoken": _SPOKEN["centre_required"]})
@@ -45,13 +46,15 @@ async def _handle(role: str, *, text, audio, photo, language_hint, centre_id,
     audio_path = _save_upload(audio, ".webm")
     photo_path = _save_upload(photo, ".jpg")
     try:
-        if not (text and text.strip()) and audio_path is None:
+        has_taps = any((gender, age_band, last_seen_location))
+        if not (text and text.strip()) and audio_path is None and photo_path is None and not has_taps:
             return JSONResponse(status_code=400,
                                 content={"error": "no_input", "spoken": _SPOKEN["no_input"]})
         result: ReportResponse = intake.process_report(
             role, text=text, audio_path=audio_path, photo_path=photo_path,
             language_hint=language_hint, centre_id=centre, consent_given=consent_given,
-            reporter_mobile=reporter_mobile, reporter_name=reporter_name, top_k=top_k,
+            reporter_mobile=reporter_mobile, reporter_name=reporter_name,
+            gender=gender, age_band=age_band, last_seen_location=last_seen_location, top_k=top_k,
         )
         return JSONResponse(content=result.model_dump(mode="json"))
     finally:
@@ -68,13 +71,18 @@ async def report_lost(
     consent_given: bool = Form(True),
     reporter_mobile: str | None = Form(None),
     reporter_name: str | None = Form(None),
+    gender: str | None = Form(None),
+    age_band: str | None = Form(None),
+    last_seen_location: str | None = Form(None),
     top_k: int = Form(5),
     audio: UploadFile | None = File(None),
     photo: UploadFile | None = File(None),
 ):
     return await _handle("lost", text=text, audio=audio, photo=photo, language_hint=language_hint,
                          centre_id=centre_id, consent_given=consent_given,
-                         reporter_mobile=reporter_mobile, reporter_name=reporter_name, top_k=top_k)
+                         reporter_mobile=reporter_mobile, reporter_name=reporter_name,
+                         gender=gender, age_band=age_band, last_seen_location=last_seen_location,
+                         top_k=top_k)
 
 
 @router.post("/found")
@@ -85,10 +93,15 @@ async def report_found(
     consent_given: bool = Form(True),
     reporter_mobile: str | None = Form(None),
     reporter_name: str | None = Form(None),
+    gender: str | None = Form(None),
+    age_band: str | None = Form(None),
+    last_seen_location: str | None = Form(None),
     top_k: int = Form(5),
     audio: UploadFile | None = File(None),
     photo: UploadFile | None = File(None),
 ):
     return await _handle("found", text=text, audio=audio, photo=photo, language_hint=language_hint,
                          centre_id=centre_id, consent_given=consent_given,
-                         reporter_mobile=reporter_mobile, reporter_name=reporter_name, top_k=top_k)
+                         reporter_mobile=reporter_mobile, reporter_name=reporter_name,
+                         gender=gender, age_band=age_band, last_seen_location=last_seen_location,
+                         top_k=top_k)

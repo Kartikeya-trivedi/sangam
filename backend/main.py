@@ -13,7 +13,7 @@ import safety
 from config import settings
 from constants import CENTRES
 from db import init_db
-from routers import announce, intake, match, ops
+from routers import announce, dispatcher, intake, match, ops
 from services import claude, faces, speech
 
 
@@ -31,6 +31,7 @@ app.include_router(intake.router)
 app.include_router(match.router)
 app.include_router(ops.router)
 app.include_router(announce.router)
+app.include_router(dispatcher.router)
 
 
 @app.get("/health")
@@ -49,5 +50,12 @@ def health():
 
 @app.get("/api/v1/centres")
 def centres():
-    """The 10 reporting centres (name + slug) for the intake dropdowns."""
-    return {"centres": [{"name": n, "slug": s} for n, s in CENTRES.items()]}
+    """The 10 reporting centres (name + slug + coords) — for intake dropdowns and nearby lookup."""
+    from services.geo import CENTRE_COORDS
+
+    out = []
+    for name, slug in CENTRES.items():
+        coord = CENTRE_COORDS.get(slug)
+        out.append({"name": name, "slug": slug,
+                    "lat": coord[0] if coord else None, "lng": coord[1] if coord else None})
+    return {"centres": out}

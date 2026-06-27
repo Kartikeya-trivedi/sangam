@@ -37,8 +37,10 @@ def transcribe(audio_path: str, language_hint: str | None = None) -> tuple[str, 
         return "", "unknown"
     try:
         with open(audio_path, "rb") as f:
+            # saarika = transcription (native script); 'saaras' is the translate model (wrong here,
+            # and 400s on this account). v2.5 verified live. Claude does any translation (§8).
             resp = client.speech_to_text.transcribe(
-                file=f, model="saaras:v2", language_code=language_hint or "unknown"
+                file=f, model="saarika:v2.5", language_code=language_hint or "unknown"
             )
         return (getattr(resp, "transcript", "") or "",
                 getattr(resp, "language_code", None) or language_hint or "unknown")

@@ -6,9 +6,63 @@ pipeline is unit-testable without HTTP.
 from __future__ import annotations
 
 from config import settings
+from constants import AGE_BANDS, is_minor_band
 from db import repo
 from models import MatchResult, Person, ReportResponse
 from services import claude, matching
+
+_GENDERS = frozenset({"male", "female"})
+
+
+def _apply_taps(person: Person, *, gender: str | None, age_band: str | None,
+                last_seen_location: str | None) -> None:
+    """Overlay tap-first structured attributes from the pilgrim UI onto the extracted profile.
+
+    Families tap an exact gender / age band / last-seen place; that is confirmed structured
+    truth and beats the naive transcript extractor, so it drives matching directly. age_band
+    also re-derives the minor flag (child-safety §12).
+    """
+    g = (gender or "").strip().lower()
+    if g in _GENDERS:
+        person.gender = g  # type: ignore[assignment]
+    if age_band and age_band in AGE_BANDS:
+        person.age_band = age_band  # type: ignore[assignment]
+        person.is_minor = is_minor_band(age_band)
+    loc = (last_seen_location or "").strip()
+    if loc:
+        person.last_seen_location = loc
+    if not (person.native_summary or "").strip():
+        person.native_summary = person.summary()
+
+
+def _union(a: list[str] | None, b: list[str] | None) -> list[str]:
+    out = list(a or [])
+    for x in (b or []):
+        if x and x not in out:
+            out.append(x)
+    return out
+
+
+def _merge_vision(person: Person, vision: dict) -> None:
+    """Fill gaps in the text profile with what Claude could SEE in the photo (cross-modal match)."""
+    if not vision:
+        return
+    if person.age_band == "unknown":
+        ab = vision.get("age_band")
+        if ab and ab != "unknown":
+            person.age_band = ab  # type: ignore[assignment]
+            person.is_minor = is_minor_band(ab)
+    if person.gender == "unknown" and vision.get("gender") in ("male", "female"):
+        person.gender = vision["gender"]  # type: ignore[assignment]
+    if person.height_band == "unknown":
+        hb = vision.get("height_band")
+        if hb and hb != "unknown":
+            person.height_band = hb  # type: ignore[assignment]
+    person.clothing = _union(person.clothing, vision.get("clothing"))
+    person.distinguishing_features = _union(person.distinguishing_features,
+                                            vision.get("distinguishing_features"))
+    if not (person.native_summary or "").strip():
+        person.native_summary = vision.get("native_summary") or ""
 
 
 def resolve_transcript(text: str | None, audio_path: str | None,
@@ -28,13 +82,23 @@ def process_report(role: str, *, text: str | None = None, audio_path: str | None
                    photo_path: str | None = None, language_hint: str | None = None,
                    centre_id: str, consent_given: bool = True,
                    reporter_mobile: str | None = None, reporter_name: str | None = None,
-                   top_k: int = 5) -> ReportResponse:
+                   gender: str | None = None, age_band: str | None = None,
+                   last_seen_location: str | None = None, top_k: int = 5) -> ReportResponse:
     """Run the full intake pipeline and return the structured profile + ranked candidates."""
     from services import faces
 
     transcript, spoken_language = resolve_transcript(text, audio_path, language_hint)
     person = claude.extract_profile(transcript, role=role, centre_id=centre_id,
                                     spoken_language=spoken_language)
+    # Cross-modal: Claude Vision turns the photo into the same attribute vocabulary, filling gaps
+    # left by the (possibly empty) transcript — before user taps get the final say.
+    photo_analyzed = False
+    if photo_path:
+        vision = claude.extract_image_attributes(photo_path)
+        if vision:
+            _merge_vision(person, vision)
+            photo_analyzed = True
+    _apply_taps(person, gender=gender, age_band=age_band, last_seen_location=last_seen_location)
     person.consent_given = consent_given
     person.reporter_mobile = reporter_mobile
     person.reporter_name = reporter_name
@@ -69,6 +133,7 @@ def process_report(role: str, *, text: str | None = None, audio_path: str | None
         structured=safe,
         candidates=candidates,
         face_detected=face_detected,
+        photo_analyzed=photo_analyzed,
         offline_mode=settings.offline_mode or not claude._get_client(),
     )
 
