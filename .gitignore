@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node / Vite
+node_modules/
+dist/
+.vite/
+
+# Env & secrets
+.env
+.env.local
+
+# Models / data caches
+~/.insightface/
+*.onnx
+*.faiss
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

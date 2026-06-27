@@ -1,0 +1,41 @@
+[project]
+name = "setu-backend"
+version = "0.1.0"
+description = "SETU — Missing-Persons Reunification backend (Kumbh Mela 2027)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "pydantic-settings",
+    "python-multipart",
+    "websockets",
+    "anthropic",          # Claude — reasoning core
+    "sarvamai",           # Saaras STT + Bulbul v3 TTS
+    "supabase",           # central pgvector store
+    "pgvector",
+    "faiss-cpu",          # local / offline vector index (§13)
+    "numpy",
+    "pillow",
+    "requests",           # scripts/seed_found_persons.py
+]
+
+[project.optional-dependencies]
+# Face matching needs a GPU box. On the A6000:  uv sync --extra faces
+# CPU-only? swap onnxruntime-gpu -> onnxruntime in this list.
+# The app boots and matches on attributes without these (faces.py degrades, §13).
+faces = [
+    "insightface",
+    "onnxruntime-gpu",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+]
+
+[tool.uv]
+package = false           # this is an app, not an installable library
+
+[tool.ruff]
+line-length = 110

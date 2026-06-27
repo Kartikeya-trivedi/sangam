@@ -1,0 +1,134 @@
+/* SETU officials dashboard — dense, normal web app (spec §11, exempt from §2). */
+:root {
+  --bg: #f5f7fa;
+  --panel: #ffffff;
+  --ink: #1a202c;
+  --muted: #64748b;
+  --accent: #0a7d4b;
+  --border: #e2e8f0;
+  --minor: #7b1fa2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.ops {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.ops__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.ops__header h1 {
+  font-size: 18px;
+  margin: 0;
+  color: var(--accent);
+}
+
+.ops__header nav button {
+  margin-left: 8px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.ops__header nav button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.ops__main {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px;
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.queue table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.queue th,
+.queue td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.queue th {
+  background: #eef2f6;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.queue tr.minor {
+  background: #faf0fb;
+}
+
+.queue tr.minor td {
+  color: var(--minor);
+  font-weight: 600;
+}
+
+.queue .empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 24px;
+}
+
+.alerts {
+  background: #faf0fb;
+  border: 1px solid var(--minor);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.alerts h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--minor);
+}
+
+.alerts ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.error {
+  color: #b3261e;
+  font-weight: 600;
+}
