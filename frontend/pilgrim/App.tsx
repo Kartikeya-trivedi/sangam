@@ -1,20 +1,23 @@
 import { useState } from "react";
 
 import type { ReportResponse } from "./api";
-import { ConfirmScreen } from "./screens/ConfirmScreen";
+import type { Lang } from "./i18n";
+import { LANGUAGES } from "./i18n";
 import { LanguageScreen } from "./screens/LanguageScreen";
-import { PhotoScreen } from "./screens/PhotoScreen";
-import { ResultScreen } from "./screens/ResultScreen";
-import { SpeakScreen } from "./screens/SpeakScreen";
+import { ReportScreen } from "./screens/ReportScreen";
+import type { GenderValue } from "./options";
 
-// One action per screen, strictly linear (spec §2.3): Language → Speak → Photo → Confirm → Result.
-export type Step = "language" | "speak" | "photo" | "confirm" | "result";
+// Crisis-oriented flow: just two screens — Language → Report (single intake + states).
+export type Step = "language" | "report";
 
 export interface Draft {
-  language: string; // e.g. "hi-IN"
+  language: Lang; // e.g. "hi-IN"
   languageLabel: string; // e.g. "हिन्दी"
   audio?: Blob;
-  text?: string; // typed fallback (§2.1)
+  text?: string;
+  gender?: GenderValue;
+  ageBand?: string;
+  lastSeen?: string;
   photo?: Blob;
   report?: ReportResponse;
 }
@@ -27,51 +30,31 @@ export default function App() {
 
   const merge = (d: Partial<Draft>) => setDraft((prev) => ({ ...prev, ...d }));
 
+  // Persistent language pill — tap any time to switch language without losing your place.
+  const currentLabel = LANGUAGES.find((l) => l.code === draft.language)?.label ?? draft.languageLabel;
+
   return (
     <div className="app">
+      {step !== "language" && (
+        <button className="lang-pill" onClick={() => setStep("language")}>
+          🌐 {currentLabel} <span className="lang-pill__change">⟳</span>
+        </button>
+      )}
+
       {step === "language" && (
         <LanguageScreen
           onNext={(d) => {
             merge(d);
-            setStep("speak");
+            setStep("report");
           }}
         />
       )}
-      {step === "speak" && (
-        <SpeakScreen
-          draft={draft}
-          onNext={(d) => {
-            merge(d);
-            setStep("photo");
-          }}
-          onBack={() => setStep("language")}
-        />
-      )}
-      {step === "photo" && (
-        <PhotoScreen
-          draft={draft}
-          onNext={(d) => {
-            merge(d);
-            setStep("confirm");
-          }}
-          onBack={() => setStep("speak")}
-        />
-      )}
-      {step === "confirm" && (
-        <ConfirmScreen
-          draft={draft}
-          onConfirmed={(d) => {
-            merge(d);
-            setStep("result");
-          }}
-          onRedo={() => setStep("speak")}
-        />
-      )}
-      {step === "result" && (
-        <ResultScreen
+
+      {step === "report" && (
+        <ReportScreen
           draft={draft}
           onRestart={() => {
-            setDraft(FRESH);
+            setDraft({ ...FRESH, language: draft.language, languageLabel: currentLabel });
             setStep("language");
           }}
         />

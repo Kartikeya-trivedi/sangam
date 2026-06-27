@@ -1,10 +1,19 @@
 import { useEffect } from "react";
 
+import type { Lang } from "../i18n";
 import { useSpeak } from "../hooks/useSpeak";
 
 // Spec §2.2: auto-speak the screen's instruction on mount + a persistent "Listen again"
-// button. Drop one at the top of every pilgrim screen.
-export function SpeakHint({ text, lang = "hi-IN" }: { text: string; lang?: string }) {
+// button. `text` is in the user's language; the button label is localized too.
+export function SpeakHint({
+  text,
+  listenLabel = "Listen again",
+  lang = "hi-IN",
+}: {
+  text: string;
+  listenLabel?: string;
+  lang?: Lang;
+}) {
   const speak = useSpeak();
 
   useEffect(() => {
@@ -13,7 +22,7 @@ export function SpeakHint({ text, lang = "hi-IN" }: { text: string; lang?: strin
 
   return (
     <button className="speak-hint" onClick={() => speak(text, lang)}>
-      🔊 सुनिए / Listen again
+      🔊 {listenLabel}
     </button>
   );
 }

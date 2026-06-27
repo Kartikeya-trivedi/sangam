@@ -40,12 +40,19 @@ export async function reportLost(params: {
   photo?: Blob;
   text?: string;
   language_hint?: string;
+  // Tap-first structured attributes (mirror dataset columns) — boost matching.
+  gender?: string;
+  age_band?: string;
+  last_seen_location?: string;
 }): Promise<ReportResponse> {
   const fd = new FormData();
   if (params.audio) fd.append("audio", params.audio, "audio.webm");
   if (params.photo) fd.append("photo", params.photo, "photo.jpg");
   if (params.text) fd.append("text", params.text);
   if (params.language_hint) fd.append("language_hint", params.language_hint);
+  if (params.gender) fd.append("gender", params.gender);
+  if (params.age_band) fd.append("age_band", params.age_band);
+  if (params.last_seen_location) fd.append("last_seen_location", params.last_seen_location);
   const r = await fetch(`${API_BASE}/report/lost`, { method: "POST", body: fd });
   if (!r.ok) throw new Error("report_failed");
   return r.json();
