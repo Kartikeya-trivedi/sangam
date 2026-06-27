@@ -1,15 +1,11 @@
-"""Sarvam speech wrappers (spec §14). Speech ONLY — translation is Claude's job (§8).
+"""Sarvam speech — Saaras STT + Bulbul TTS — with offline fallbacks.
 
-Saaras    -> STT, auto-detects the Indian language, returns native-script transcript.
-Bulbul v3 -> TTS, needs NATIVE-SCRIPT text + target_language_code, returns audio.
-
-Both degrade gracefully when the key is missing or the service is unreachable so the
-camp kiosk never goes fully down (§13). Callers fall back to typed input / browser TTS.
+Speech is optional (`pip install -e '.[speech]'`). Without the `sarvamai` package or a
+SARVAM_API_KEY, STT returns an empty transcript (the router then asks for typed input) and TTS
+returns None (the frontend falls back to the browser's Web Speech API). The app never crashes
+because speech is unavailable — that is the camp-resilience contract.
 """
 from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import Optional
 
 from config import settings
 
@@ -21,40 +17,47 @@ except Exception:
 _client = None
 
 
+def available() -> bool:
+    return bool(settings.has_sarvam and SarvamAI is not None)
+
+
 def _get_client():
     global _client
-    if not settings.has_sarvam or SarvamAI is None:
+    if not available():
         return None
     if _client is None:
         _client = SarvamAI(api_subscription_key=settings.sarvam_api_key)
     return _client
 
 
-@dataclass
-class Transcript:
-    text: str       # native-script transcript ("" when unavailable)
-    language: str   # detected language code, e.g. "ta-IN"
-
-
-def transcribe(audio_bytes: bytes, language_hint: Optional[str] = None) -> Transcript:
-    """Saaras STT. Returns native-script text + detected language."""
+def transcribe(audio_path: str, language_hint: str | None = None) -> tuple[str, str]:
+    """(transcript, detected_language). ('', 'unknown') signals STT-unavailable -> use text input."""
     client = _get_client()
     if client is None:
-        # Offline/degraded: caller should fall back to typed input (§13).
-        return Transcript(text="", language=language_hint or "unknown")
-    # TODO (Phase 1): wire Sarvam Saaras.
-    #   resp = client.speech_to_text.transcribe(file=audio_bytes, model="saaras:v2")
-    #   return Transcript(text=resp.transcript, language=resp.language_code)
-    raise NotImplementedError("Wire Sarvam Saaras STT here")
+        return "", "unknown"
+    try:
+        with open(audio_path, "rb") as f:
+            resp = client.speech_to_text.transcribe(
+                file=f, model="saaras:v2", language_code=language_hint or "unknown"
+            )
+        return (getattr(resp, "transcript", "") or "",
+                getattr(resp, "language_code", None) or language_hint or "unknown")
+    except Exception:
+        return "", "unknown"
 
 
-def synthesize(text: str, language: str) -> Optional[bytes]:
-    """Bulbul v3 TTS. `text` MUST be native script (never romanized). Returns audio bytes."""
+def synthesize(text: str, language: str = "hi") -> bytes | None:
+    """Native-script text -> audio bytes (Bulbul). None -> frontend uses Web Speech API."""
     client = _get_client()
-    if client is None:
+    if client is None or not text.strip():
         return None
-    # TODO (Phase 1): wire Sarvam Bulbul v3.
-    #   resp = client.text_to_speech.convert(text=text, target_language_code=language,
-    #                                         model="bulbul:v3", speaker="...")
-    #   return base64.b64decode(resp.audios[0])
-    raise NotImplementedError("Wire Sarvam Bulbul v3 TTS here")
+    try:
+        resp = client.text_to_speech.convert(text=text, target_language_code=language,
+                                              model="bulbul:v2")
+        audios = getattr(resp, "audios", None)
+        if audios:
+            import base64
+            return base64.b64decode(audios[0])
+        return None
+    except Exception:
+        return None

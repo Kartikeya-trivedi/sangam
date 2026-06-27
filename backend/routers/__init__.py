@@ -1,1 +1,1 @@
-"""HTTP routers (spec §7)."""
+"""FastAPI routers for SETU."""

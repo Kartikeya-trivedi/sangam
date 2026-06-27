@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+# Local SQLite database + generated artifacts
+*.db
+*.db-shm
+*.db-wal
+.audio_cache/
+.pytest_cache/
+.ruff_cache/

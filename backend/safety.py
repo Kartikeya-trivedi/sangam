@@ -1,70 +1,52 @@
-"""Child safety + responsible data (spec §12). These are rubric points — keep intact.
+"""Child-safety, consent, audit, and data-retention (TTL) enforcement.
 
-- Minors are NEVER broadcast publicly. /announce is blocked when is_minor; instead a
-  private staff alert + guardian-verification task is created.
-- Audit log on every match-confirm, announcement, and record access.
-- Data minimization & no PII (phone/name) in logs or URLs (§12.7).
-
-Scaffold uses in-memory stores; back these with the audit_log table + a staff-alert
-table/queue in production.
+Child safety is non-negotiable: a minor is NEVER publicly announced; a match involving a minor
+requires guardian verification before confirmation; every confirm/announce/access is audited; no
+PII (name/phone) is written to logs. Records auto-purge after TTL_DAYS (face embeddings + photos
+are cleared first).
 """
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 
+from db import repo
 from models import Person
 
-_audit: list[dict] = []
-_staff_alerts: list[dict] = []
+# convenience re-export so routers can `from safety import audit`
+audit = repo.write_audit
 
 
 def is_minor(person: Person) -> bool:
-    return person.is_minor or person.age_band in ("child", "teen")
+    return bool(person.is_minor)
 
 
-def audit(actor: str, action: str, person_id: str | None = None, **meta) -> None:
-    """Append to the audit log. NEVER put phone numbers or names in meta (§12.7)."""
-    _audit.append(
-        {
-            "id": str(uuid.uuid4()),
-            "actor": actor,
-            "action": action,
-            "person_id": person_id,
-            "meta": meta,
-            "at": datetime.now(timezone.utc).isoformat(),
-        }
-    )
+def match_requires_guardian(lost: Person, found: Person) -> bool:
+    return bool(lost.is_minor or found.is_minor)
 
 
-def create_staff_alert(person: Person, centre_id: str | None = None) -> dict:
-    """Private alert for a minor/vulnerable match — opens guardian verification (§12.1, §12.2)."""
-    alert = {
-        "id": str(uuid.uuid4()),
-        "person_id": person.id,
-        "centre_id": centre_id or person.centre_id,
-        "type": "minor_match" if is_minor(person) else "vulnerable_match",
-        "guardian_verified": False,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    _staff_alerts.append(alert)
-    audit("system", "staff_alert_created", person.id, type=alert["type"])
-    return alert
+def can_announce(person: Person) -> tuple[bool, str]:
+    """(allowed, reason). Minors are never publicly announced (privacy + anti-trafficking)."""
+    if person.is_minor:
+        return False, "minor_announcement_blocked"
+    return True, ""
 
 
-def redact_person(person: Person) -> dict:
-    """Public-safe view: no phone, no embedding; minors lose photo_ref too (§12.3)."""
-    data = person.model_dump()
-    data.pop("contact_phone", None)
-    data.pop("face_embedding", None)
-    if is_minor(person):
-        data.pop("photo_ref", None)
-    return data
+def purge_expired() -> int:
+    """Clear sensitive fields + mark 'expired' for records past TTL. Returns count purged.
 
-
-def audit_log() -> list[dict]:
-    return list(_audit)
-
-
-def staff_alerts() -> list[dict]:
-    return list(_staff_alerts)
+    Keeps the row shell (status='expired') for the audit trail; wipes face_embedding + photo.
+    """
+    conn = repo.get_conn()
+    now = datetime.now(timezone.utc).isoformat()
+    rows = conn.execute(
+        "SELECT id FROM persons WHERE ttl_expires_at < ? AND status != 'expired'", (now,)
+    ).fetchall()
+    for r in rows:
+        conn.execute(
+            "UPDATE persons SET face_embedding=NULL, photo_storage_key=NULL, status='expired',"
+            " updated_at=? WHERE id=?",
+            (now, r["id"]),
+        )
+        repo.write_audit("system", "record_expired", person_id=r["id"])
+    conn.commit()
+    return len(rows)

@@ -1,53 +1,53 @@
-"""InsightFace face embeddings (spec §4, §14). Local, GPU, no API.
+"""InsightFace face embeddings — a LIVE-INTAKE capability (the dataset has no photos).
 
-buffalo_l -> 512-d embedding. Embed once at intake, store the vector. Loads lazily so
-the app boots without the model present (offline/degraded path: face matching disabled,
-attribute matching still works, §13).
+Optional: `pip install -e '.[faces]'` on a box with onnxruntime. Without it, embed() returns
+None and the matching engine simply runs on attributes + geo. Face matching only ever dominates
+when BOTH sides have an embedding, so its absence degrades gracefully.
 """
 from __future__ import annotations
 
-import io
-from typing import Optional
-
-import numpy as np
+from functools import lru_cache
 
 from config import settings
 
-_app = None  # insightface FaceAnalysis, lazily initialized
+try:
+    import numpy as np
+    from insightface.app import FaceAnalysis  # type: ignore
+except Exception:
+    FaceAnalysis = None
+    np = None
 
 
+def available() -> bool:
+    return FaceAnalysis is not None
+
+
+@lru_cache(maxsize=1)
 def _get_app():
-    global _app
-    if _app is not None:
-        return _app
-    try:
-        from insightface.app import FaceAnalysis  # type: ignore
-
-        app = FaceAnalysis(name=settings.face_model)
-        app.prepare(ctx_id=0)  # GPU 0; set ctx_id=-1 for CPU
-        _app = app
-    except Exception as e:  # model/runtime missing -> degrade to no-face matching
-        print(f"[faces] InsightFace unavailable, face matching disabled: {e}")
-        _app = None
-    return _app
+    if not available():
+        return None
+    app = FaceAnalysis(name=settings.face_model)
+    app.prepare(ctx_id=0, det_size=(640, 640))
+    return app
 
 
-def embed(image_bytes: bytes) -> Optional[list[float]]:
-    """Return a 512-d face embedding for the largest detected face, or None."""
+def embed(image_path: str) -> list[float] | None:
+    """Largest detected face -> normalized 512-d embedding. None if no face / unavailable."""
     app = _get_app()
     if app is None:
         return None
-    from PIL import Image
-
-    img = np.array(Image.open(io.BytesIO(image_bytes)).convert("RGB"))[:, :, ::-1]  # RGB -> BGR
-    faces = app.get(img)
-    if not faces:
+    try:
+        img = _read_image(image_path)
+        faces = app.get(img)
+        if not faces:
+            return None
+        face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+        vec = face.normed_embedding
+        return [float(x) for x in vec]
+    except Exception:
         return None
-    faces.sort(key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]), reverse=True)
-    return faces[0].embedding.astype("float32").tolist()
 
 
-def cosine(a: list[float], b: list[float]) -> float:
-    va, vb = np.asarray(a, "float32"), np.asarray(b, "float32")
-    na, nb = np.linalg.norm(va), np.linalg.norm(vb)
-    return 0.0 if na == 0 or nb == 0 else float(np.dot(va, vb) / (na * nb))
+def _read_image(path: str):
+    import cv2  # type: ignore
+    return cv2.imread(path)

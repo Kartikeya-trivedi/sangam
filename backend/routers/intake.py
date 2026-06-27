@@ -1,87 +1,94 @@
-"""Intake routes (spec §7): POST /report/lost, POST /report/found.
-
-Pipeline (§7): audio -> Saaras STT -> Claude extract+normalize -> (photo -> InsightFace
-embed) -> matching -> ranked candidates with explanations.
-"""
+"""Report intake — POST /report/lost and /report/found (voice or text + optional photo)."""
 from __future__ import annotations
 
-from typing import Optional
+import os
+import tempfile
 
 from fastapi import APIRouter, File, Form, UploadFile
+from fastapi.responses import JSONResponse
 
-from db import faiss_index, supabase_client
+from constants import CENTRE_SLUGS, slugify_centre
 from models import ReportResponse
-from safety import audit, create_staff_alert
-from services import claude, faces, matching, speech
+from services import intake
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/report", tags=["intake"])
 
-
-async def _ingest(
-    role: str,
-    audio: Optional[UploadFile],
-    photo: Optional[UploadFile],
-    text: Optional[str],
-    language_hint: Optional[str],
-    centre_id: Optional[str] = None,
-) -> ReportResponse:
-    # 1. Speech -> native-script transcript (or typed text fallback, §13).
-    transcript, language = (text or ""), (language_hint or "unknown")
-    if audio is not None:
-        try:
-            t = speech.transcribe(await audio.read(), language_hint)
-            transcript, language = (t.text or transcript), (t.language or language)
-        except NotImplementedError:
-            pass  # Sarvam not wired yet -> rely on typed text / degraded path
-
-    # 2. Claude: transcript -> canonical English Person + native readback summary.
-    person = claude.extract_profile(transcript, role=role, spoken_language=language)
-    person.centre_id = centre_id
-
-    # 3. Photo -> InsightFace embedding (TODO: + Claude vision location hint).
-    if photo is not None:
-        person.face_embedding = faces.embed(await photo.read())
-
-    # 4. Persist: local index always; central store when online.
-    faiss_index.add_person(person)
-    supabase_client.insert_person(person, centre_id=centre_id)
-    audit("pilgrim" if role == "lost" else "staff", f"report_{role}", person.id)
-
-    # 5. Match against the opposite role; Claude re-ranks + explains.
-    candidates = matching.rank_candidates(person, k=10)
-    candidates = claude.rerank_candidates(person, candidates)
-
-    # 6. §12 safety: a minor among the candidates is never surfaced in a pilgrim-facing
-    #    list — raise a private staff alert instead (the UI hides the connect button too).
-    for c in candidates:
-        if c.is_minor:
-            create_staff_alert(person, centre_id)
-
-    return ReportResponse(
-        report_id=person.id,
-        native_summary=person.native_summary,
-        structured=person,
-        candidates=candidates,
-    )
+# Spoken errors are returned in the reporter's language so the frontend can TTS them directly.
+_SPOKEN = {
+    "centre_required": "कृपया केंद्र का नाम बताएं।",
+    "no_input": "कृपया बोलकर या लिखकर जानकारी दें।",
+    "consent_required": "क्या हम आपकी जानकारी ढूंढने के लिए इस्तेमाल कर सकते हैं? कृपया 'हाँ' दबाएं।",
+}
 
 
-@router.post("/report/lost", response_model=ReportResponse)
+def _save_upload(upload: UploadFile | None, suffix: str) -> str | None:
+    if upload is None:
+        return None
+    fd, path = tempfile.mkstemp(suffix=suffix)
+    with os.fdopen(fd, "wb") as f:
+        f.write(upload.file.read())
+    return path
+
+
+async def _handle(role: str, *, text, audio, photo, language_hint, centre_id,
+                  consent_given, reporter_mobile, reporter_name, top_k) -> JSONResponse:
+    if not centre_id:
+        return JSONResponse(status_code=400,
+                            content={"error": "centre_required", "spoken": _SPOKEN["centre_required"]})
+    centre = slugify_centre(centre_id)
+    if centre not in CENTRE_SLUGS:
+        return JSONResponse(status_code=400,
+                            content={"error": "unknown_centre", "spoken": _SPOKEN["centre_required"]})
+    if not consent_given:
+        return JSONResponse(status_code=403,
+                            content={"error": "consent_required", "spoken": _SPOKEN["consent_required"]})
+    audio_path = _save_upload(audio, ".webm")
+    photo_path = _save_upload(photo, ".jpg")
+    try:
+        if not (text and text.strip()) and audio_path is None:
+            return JSONResponse(status_code=400,
+                                content={"error": "no_input", "spoken": _SPOKEN["no_input"]})
+        result: ReportResponse = intake.process_report(
+            role, text=text, audio_path=audio_path, photo_path=photo_path,
+            language_hint=language_hint, centre_id=centre, consent_given=consent_given,
+            reporter_mobile=reporter_mobile, reporter_name=reporter_name, top_k=top_k,
+        )
+        return JSONResponse(content=result.model_dump(mode="json"))
+    finally:
+        for p in (audio_path, photo_path):
+            if p and os.path.exists(p):
+                os.remove(p)
+
+
+@router.post("/lost")
 async def report_lost(
-    audio: Optional[UploadFile] = File(None),
-    photo: Optional[UploadFile] = File(None),
-    text: Optional[str] = Form(None),
-    language_hint: Optional[str] = Form(None),
+    centre_id: str = Form(...),
+    text: str | None = Form(None),
+    language_hint: str | None = Form(None),
+    consent_given: bool = Form(True),
+    reporter_mobile: str | None = Form(None),
+    reporter_name: str | None = Form(None),
+    top_k: int = Form(5),
+    audio: UploadFile | None = File(None),
+    photo: UploadFile | None = File(None),
 ):
-    return await _ingest("lost", audio, photo, text, language_hint)
+    return await _handle("lost", text=text, audio=audio, photo=photo, language_hint=language_hint,
+                         centre_id=centre_id, consent_given=consent_given,
+                         reporter_mobile=reporter_mobile, reporter_name=reporter_name, top_k=top_k)
 
 
-@router.post("/report/found", response_model=ReportResponse)
+@router.post("/found")
 async def report_found(
-    audio: Optional[UploadFile] = File(None),
-    photo: Optional[UploadFile] = File(None),
-    text: Optional[str] = Form(None),
-    language_hint: Optional[str] = Form(None),
-    centre_id: Optional[str] = Form(None),
+    centre_id: str = Form(...),
+    text: str | None = Form(None),
+    language_hint: str | None = Form(None),
+    consent_given: bool = Form(True),
+    reporter_mobile: str | None = Form(None),
+    reporter_name: str | None = Form(None),
+    top_k: int = Form(5),
+    audio: UploadFile | None = File(None),
+    photo: UploadFile | None = File(None),
 ):
-    """Logs a found person at a centre and reverse-matches against open lost reports (§7)."""
-    return await _ingest("found", audio, photo, text, language_hint, centre_id)
+    return await _handle("found", text=text, audio=audio, photo=photo, language_hint=language_hint,
+                         centre_id=centre_id, consent_given=consent_given,
+                         reporter_mobile=reporter_mobile, reporter_name=reporter_name, top_k=top_k)

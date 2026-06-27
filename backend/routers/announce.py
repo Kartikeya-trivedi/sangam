@@ -1,55 +1,68 @@
-"""Announcements + generic TTS (spec §7, §12). Minor announcements are BLOCKED (§12.1)."""
+"""Announcements (TTS) + UI speech. Minors are never publicly announced (safety §)."""
 from __future__ import annotations
 
-import base64
+import uuid
+from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
+from fastapi.responses import FileResponse, JSONResponse
 
-from db import faiss_index
-from models import AnnounceRequest, AnnounceResponse, SpeakRequest, SpeakResponse
-from safety import audit, create_staff_alert, is_minor
+import safety
+from db import repo
+from models import AnnounceRequest, SpeakRequest
 from services import claude, speech
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1", tags=["announce"])
+
+_AUDIO_DIR = Path(__file__).resolve().parents[1] / ".audio_cache"
+_AUDIO_DIR.mkdir(exist_ok=True)
 
 
-def _audio_data_url(audio: bytes | None) -> str | None:
-    """Inline TTS audio as a data: URL so the scaffold needs no object storage."""
+def _write_audio(audio: bytes | None) -> str | None:
     if not audio:
         return None
-    return "data:audio/wav;base64," + base64.b64encode(audio).decode("ascii")
+    key = f"{uuid.uuid4()}.wav"
+    (_AUDIO_DIR / key).write_bytes(audio)
+    return f"/api/v1/speak/audio/{key}"
 
 
-@router.post("/announce", response_model=AnnounceResponse)
+@router.post("/announce")
 def announce(req: AnnounceRequest):
-    person = faiss_index.get_person(req.person_id)
-    if person is None:
-        raise HTTPException(status_code=404, detail="person_not_found")
+    person = repo.get_person(req.person_id)
+    if not person:
+        return JSONResponse(status_code=404, content={"error": "person_not_found"})
 
-    # §12.1 — minors are never broadcast publicly. Alert staff privately + open verification.
-    if is_minor(person):
-        create_staff_alert(person, person.centre_id)
-        audit("system", "announce_blocked_minor", person.id)
-        return AnnounceResponse(announcement_text="", blocked=True, staff_alert_created=True)
+    allowed, reason = safety.can_announce(person)
+    if not allowed:
+        repo.insert_announcement(person.id, req.target_language, "", triggered_by=req.triggered_by,
+                                 is_minor_blocked=True)
+        repo.write_audit(req.triggered_by, "announcement_triggered", person_id=person.id,
+                         meta={"is_minor_blocked": True})
+        return JSONResponse(status_code=403, content={
+            "error": reason,
+            "spoken": "नाबालिग की जानकारी सार्वजनिक नहीं की जा सकती। कृपया स्टाफ से संपर्क करें।",
+            "action_required": "guardian_verification"})
 
     text = claude.draft_announcement(person, req.target_language)
-    audio = None
-    try:
-        audio = speech.synthesize(text, req.target_language)
-    except NotImplementedError:
-        pass  # Bulbul not wired yet
-    audit("staff", "announce", person.id, language=req.target_language)
-    # TODO: also push a reunification event to the ops dashboard (websocket / poll).
-    return AnnounceResponse(announcement_text=text, audio_url=_audio_data_url(audio))
+    audio_url = _write_audio(speech.synthesize(text, req.target_language))
+    repo.insert_announcement(person.id, req.target_language, text, triggered_by=req.triggered_by,
+                             is_minor_blocked=False, audio_storage_key=audio_url)
+    repo.write_audit(req.triggered_by, "announcement_triggered", person_id=person.id,
+                     meta={"is_minor_blocked": False})
+    return {"announcement_text": text, "audio_url": audio_url, "blocked": False,
+            "staff_alert_created": False}
 
 
-@router.post("/speak", response_model=SpeakResponse)
+@router.post("/speak")
 def speak(req: SpeakRequest):
-    """Generic TTS for UI guidance (§7). Returns null audio_url when Bulbul isn't wired —
-    the pilgrim app then falls back to the browser's built-in speech synthesis (§2.2)."""
-    audio = None
-    try:
-        audio = speech.synthesize(req.text, req.language)
-    except NotImplementedError:
-        pass
-    return SpeakResponse(audio_url=_audio_data_url(audio))
+    """TTS for UI guidance strings (ephemeral)."""
+    audio_url = _write_audio(speech.synthesize(req.text, req.language))
+    return {"audio_url": audio_url}
+
+
+@router.get("/speak/audio/{key}")
+def speak_audio(key: str):
+    path = _AUDIO_DIR / Path(key).name  # basename guards against path traversal
+    if not path.exists():
+        return JSONResponse(status_code=404, content={"error": "audio_not_found"})
+    return FileResponse(path, media_type="audio/wav")
