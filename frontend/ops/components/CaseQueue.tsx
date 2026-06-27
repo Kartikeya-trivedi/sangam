@@ -113,6 +113,7 @@ export function CaseQueue() {
         <thead>
           <tr>
             <th>Role</th>
+            <th>Name</th>
             <th>Summary</th>
             <th>Age</th>
             <th>Gender</th>
@@ -139,6 +140,7 @@ export function CaseQueue() {
               }}
             >
               <td>{c.role}</td>
+              <td>{c.name ? <strong>{c.name}</strong> : <span className="noname">— unnamed —</span>}</td>
               <td>{caseSummary(c)}</td>
               <td>{c.age_band}</td>
               <td>{c.gender}</td>
@@ -161,7 +163,7 @@ export function CaseQueue() {
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={8} className="empty">
+              <td colSpan={9} className="empty">
                 No cases yet — run <code>python scripts/seed_found_persons.py</code>.
               </td>
             </tr>

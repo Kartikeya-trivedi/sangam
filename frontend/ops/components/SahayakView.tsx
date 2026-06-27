@@ -38,15 +38,16 @@ export function SahayakView() {
             onClick={() => setSel(c)}
           >
             <div className="sacase__top">
-              <span className="sacase__id">{c.id.slice(0, 8)}</span>
+              <span className="sacase__name">{c.name ?? "Unidentified"}</span>
               {c.best_match_score != null && (
                 <span className="sacase__score">{Math.round(c.best_match_score * 100)}%</span>
               )}
             </div>
             <div className="sacase__sum">
+              <span className="sacase__id">#{c.id.slice(0, 8)}</span> ·{" "}
               {[c.age_band !== "unknown" && c.age_band, c.gender !== "unknown" && c.gender, c.last_seen_location]
                 .filter(Boolean)
-                .join(" · ") || "unidentified person"}
+                .join(" · ") || "unidentified"}
             </div>
           </button>
         ))}
@@ -159,7 +160,7 @@ function SahayakRun({ c }: { c: CaseRow }) {
     <div className="sarun">
       <div className="sarun__timeline">
         <div className="sarun__case">
-          Working case <strong>{c.id.slice(0, 8)}</strong>
+          Working <strong>{c.name ?? "an unnamed case"}</strong> · #{c.id.slice(0, 8)}
         </div>
         {steps.map((s) => (
           <div key={s.n} className={`sastep sastep--${s.kind}`}>
