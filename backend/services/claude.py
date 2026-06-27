@@ -115,6 +115,8 @@ def draft_announcement(person: Person, target_language: str) -> str:
 _COLORS = ["blue", "red", "white", "green", "yellow", "black", "orange", "saffron"]
 _GARMENTS = {"kurta": "kurta", "saree": "saree", "sari": "saree", "dhoti": "dhoti", "shirt": "shirt", "salwar": "salwar"}
 _LANGS = ["tamil", "hindi", "marathi", "telugu", "bengali", "gujarati", "kannada", "malayalam", "punjabi"]
+_LANDMARKS = ["ramkund", "panchavati", "trimbakeshwar", "nashik road", "dwarka", "tapovan",
+              "gangapur", "kalaram", "godavari", "sangam", "sadhugram", "adgaon"]
 
 
 def _mock_extract(text: str) -> dict:
@@ -133,6 +135,7 @@ def _mock_extract(text: str) -> dict:
     garment = next((v for k, v in _GARMENTS.items() if k in t), None)
     clothing = [" ".join(x for x in [color, garment] if x)] if garment else []
     langs = [l for l in _LANGS if l in t]
+    loc = next((lm for lm in _LANDMARKS if lm in t), None)
     return {
         "age_band": age,
         "gender": gender,
@@ -140,7 +143,7 @@ def _mock_extract(text: str) -> dict:
         "distinguishing": [],
         "height_band": "unknown",
         "languages_spoken": langs,
-        "last_seen_location": None,
+        "last_seen_location": loc,
         "last_seen_time": None,
         "native_summary": (text or "").strip()[:140],
         "is_minor": age in ("child", "teen"),

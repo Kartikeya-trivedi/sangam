@@ -4,7 +4,7 @@
 > matching across every lost-and-found centre — replacing "broadcast a name and hope."
 
 > **Team:** see [ROLES.md](ROLES.md) for the 4-person, zero-conflict split. **Datasets:** see [DATA.md](DATA.md).
-> **Run & test:** [docs/E2E_GUIDE.md](docs/E2E_GUIDE.md). **Infra & scaling:** [docs/INFRA.md](docs/INFRA.md). **Flows:** [flow.md](flow.md).
+> **Run & test:** [docs/E2E_GUIDE.md](docs/E2E_GUIDE.md). **Infra & scaling:** [docs/INFRA.md](docs/INFRA.md). **Map:** [docs/MAP.md](docs/MAP.md). **Flows:** [flow.md](flow.md).
 
 This is the **initial scaffold** built to `SETU_BUILD_SPEC.md`. The structure, data model,
 API surface, matching engine, and both frontends are in place. Cloud integrations (Sarvam STT/TTS,

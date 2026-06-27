@@ -1,5 +1,9 @@
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 
+// Optional basemap key (MapTiler / Mapbox). Without it the map uses free demo tiles.
+// Set VITE_MAPS_API_KEY in frontend/ops/.env to use a real street basemap.
+export const MAPS_API_KEY = import.meta.env.VITE_MAPS_API_KEY ?? "";
+
 export interface CaseRow {
   id: string;
   role: string;
