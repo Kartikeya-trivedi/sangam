@@ -47,6 +47,25 @@ lets us report a real precision/recall number. That is a direct hit on *System d
 | Police_Stations | Route a found person/family to nearest help point; response coverage | new `/ops/nearest` |
 | Chokepoints_Parking | **Hotspot prediction** — where separations cluster; where to place help desks | ops heat layer / analytics |
 
+## Richer geo: the KML files (`data/*.kml`)
+
+Three Google-Earth KMLs add metadata the CSVs lack — **prefer these for the map/geo work**:
+
+- **`Chokepoints_Parking.kml`** (85 pts) — same points as the chokepoints CSV **plus Risk
+  (very-high / high / medium), Status, Source, Note**. Risk split: **6 very-high, 24 high, 55 medium**.
+  The 6 very-high points + the **3 no-vehicle pressure zones** (Ramkund, Panchavati/Ramkund access,
+  Godavari ghat approaches) are the separation hotspots → place help-desks there and weight hotspot
+  heat by risk. Categories: Parking 30, Traffic choke 26, Transfer node 11, Outer parking 10,
+  Parking belt 5, No-vehicle zone 3.
+- **`CCTV_Zones_Cameras.kml`** (4,141 placemarks) — **32 real zone boundary polygons + ~4,100
+  cameras** (`Z#-C#`). Richer than `CCTV_Locations.csv` (1,280 pts) and `Zone_Boundaries.csv`
+  (centroids only): use the polygons for true zone coverage and point-in-zone of a `last_seen_location`.
+- **`Police_Stations.kml`** (14) — named stations with coords (Adgaon, Bhadrakali, Panchavati,
+  Nashik Road, …).
+
+Parse KML with any XML lib (namespace `http://www.opengis.net/kml/2.2`): a placemark is
+`<name>` + `<Point><coordinates>lng,lat,0</coordinates></Point>` (cameras/points) or `<Polygon>` (zones).
+
 ## Next steps (recommended order)
 
 1. `scripts/load_dataset.py` — ingest the 2,500 records into the registry (replaces the toy seed). Maps cleanly to `Person` (centre_id ← reporting_center; is_minor ← age_band 0-12/13-17; no face_embedding).
